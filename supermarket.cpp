@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <conio.h>
 #include <ctime>
 #include <vector>
@@ -6,12 +7,13 @@ using namespace std;
 
 class IOInterface;
 class Supermarket;
-class Order;
+class Cart;
 class Product;
-class Food;
 class HouseholdProduct;
 class ElectricalProduct;
 class ElectricalAppliance;
+class Food;
+
 
 class IOInterface{
 public:
@@ -30,6 +32,9 @@ public:
   Product(const Product&);
   Product& operator =(const Product&);
   string getName(){return this->name;}
+  double getPrice(){return this->price;}
+  int getQuantity(){return this->quantity;}
+  void setQuantity(int quantity){this->quantity = quantity;}
   istream& read(istream&);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, Product&);
@@ -114,11 +119,21 @@ public:
   ~Food(){}
 };
 
-class Order{
-  // string date;
-  // float time;
-  vector<Product*> productList;
+class Cart{
+  vector<Product*> cart;
+public:
+  Cart();
+  Cart(vector<Product*>);
+  Cart(const Cart&);
+  Cart& operator=(const Cart&);
+  friend istream& operator>>(istream&, Cart&);
+  friend ostream& operator<<(ostream&, const Cart&);
+  void add(Supermarket&);
+  void del();
+  void buy();
+  ~Cart(){}
 };
+
 class Supermarket{
   string name;
   int foundationYear;
@@ -131,6 +146,14 @@ public:
   Supermarket& operator=(const Supermarket&);
   friend istream& operator>>(istream&, Supermarket&);
   friend ostream& operator<<(ostream&, const Supermarket&);
+  vector<Product*> getProducts() const{return this->products;}
+  void setProducts(vector<Product*> products) {
+    if(!this->products.empty())
+      this->products.clear();
+    for(int i = 0; i < products.size(); ++i)
+      this->products[i] = products[i];
+  }
+  ~Supermarket(){}
 // welcome message
   void welcome();
 // CRUD operations
@@ -142,6 +165,7 @@ public:
   int calcRevenue(){
     //based on all orders placed
   }
+  ~Supermarket(){}
 };
 ////////////////////////////////////////
 
@@ -352,6 +376,7 @@ ostream& operator<<(ostream& out, const ElectricalAppliance& ea){
 bool ElectricalAppliance::isOnSale() const{
   return 0;
 }
+
 ////////////////////////////////////////
 
 Food::Food():Product(){
@@ -424,6 +449,70 @@ bool Food::isOnSale() const{
     return 0;
   return 1;
 }
+
+//////////////////////////////////////////
+
+Cart::Cart(){
+  this->cart = {};
+}
+Cart::Cart(vector<Product*> cart){
+  this->cart = cart;
+}
+Cart::Cart(const Cart& c){
+  this->cart = c.cart;
+}
+Cart& Cart::operator=(const Cart& c){
+  if(this!=&c){
+    this->cart = c.cart;
+  }
+  return *this;
+}
+
+void Cart::add(Supermarket& s){
+  cout<<"Enter the name: ";
+  string name;
+  cin>>name;
+  for(int i = 0; i < s.getProducts().size(); ++i)
+    if(s.getProducts()[i]->getName() == name){
+      int q = s.getProducts()[i]->getQuantity();
+      if(q > 0){
+        q--;
+        this->cart.push_back(s.getProducts()[i]);
+        s.getProducts()[i]->setQuantity(q);
+      }
+    }
+}
+
+void Cart::buy(){
+  ofstream receipt("receipt.out");
+
+  double sum = 0;
+  for(int i = 0; i < this->cart.size(); ++i)
+    sum+=this->cart[i]->getPrice();
+
+  time_t tim = time(0);
+  tm* gottime =  localtime(&tim);
+  receipt<<"Tranzaction time: "<<gottime->tm_mday<<".0"<<gottime->tm_mon+1<<"."<<gottime->tm_year+1900<<" "<<gottime->tm_hour<<":"<<gottime->tm_min<<endl;
+
+  receipt<<"------List of goods------\n";
+  for(int i = 0; i < this->cart.size(); ++i)
+    receipt<<*this->cart[i]<<endl;
+  receipt<<"\nTotal price: "<<sum;
+}
+
+void Cart::del(){
+  cout<<"What product do you want to delete? Enter the name: ";
+  string name;
+  cin>>name;
+  vector<Product*> updatedCart;
+  for(int i=0; i<cart.size();i++)
+    if(cart[i]->getName() != name)
+      updatedCart.push_back(cart[i]);
+    
+  cart = updatedCart;
+  cout<<"\nProduct deleted succesfully!\n\n";
+}
+
 /////////////////////////////////////////
 
 Supermarket::Supermarket(){
@@ -550,55 +639,83 @@ void Supermarket::delProduct(){
   products = updatedProducts;
   cout<<"\nProduct deleted succesfully!\n\n";
 }
+
 ////////////////////////////////////////
 
 int main(){
-  Supermarket s("Clevr", 1986);
-  int k = 1;
+  Product* p1 = new Food("chips", 200, 3.5, Food::category::snacks, "28.04.2024", 560, 130, 0);
+  Product* p2 = new HouseholdProduct("bleach", 100, 10.5, "chlorine", true);
+  Product* p3 = new ElectricalProduct("TV", 35, 400, 2, 500);
+  Product* p4 = new ElectricalAppliance("Vaccum Cleaner", 50, 200.8, "plastic", false, 1, 300, 100, {"Bluetooth conectivity", "Automatic shut-off"} );
+  vector<Product*> l = {p1,p2,p3,p4};
+  
+  Supermarket s("Clevr", 1987, l);
   s.welcome();
-  while(k == 1){
-      cout << "1. Add product\n";
-      cout << "2. Show products\n";
-      cout << "3. Edit product\n";
-      cout << "4. Delete product\n";
-      cout << "5. Stop\n\n";
-      int choice;
-      cin >> choice;
-      switch(choice){
-          case 1:{
-              s.addProduct();
-              break;
-          }
-          case 2:{
-              s.showProducts();
-              break;
-          }
-          case 3:{
-              s.editProduct();
-              break;
-          }
-          case 4:{
-              s.delProduct();
-              break;
-          }
-          case 5:{
-              k = 0;
-              break;
-          }
-      }
+  
+  int k;
+  cout<<"1. Admin\n2. Client\n";
+  cin>>k;
+  cout<<endl;
+  if(k == 1){
+    while(k == 1){
+        cout << "1. Add product\n";
+        cout << "2. Show products\n";
+        cout << "3. Edit product\n";
+        cout << "4. Delete product\n";
+        cout << "5. Stop\n\n";
+        int choice;
+        cin >> choice;
+        switch(choice){
+            case 1:{
+                s.addProduct();
+                break;
+            }
+            case 2:{
+                s.showProducts();
+                break;
+            }
+            case 3:{
+                s.editProduct();
+                break;
+            }
+            case 4:{
+                s.delProduct();
+                break;
+            }
+            case 5:{
+                k = 0;
+                break;
+            }
+        }
+    }
   }
-  // ElectricalAppliance h;
-  // cin>>h;
-  // cout<<h;
-  // Food f("tomato",20,1.5,1, "10.10.2020",2,15,1);
-  // cout<<f;
-  //enum
-  //functionalities
-  //menu
-  // CURRENT DATE AND TIME
-  // time_t tim = time(0);
-  // tm* gottime =  localtime(&tim);
-  // cout<<gottime->tm_hour<<":"<<gottime->tm_min<<endl;
-  // cout<<gottime->tm_mday<<".0"<<gottime->tm_mon+1<<"."<<gottime->tm_year+1900;
+  else if (k == 2){
+    while(k == 2){
+        Cart c;
+        s.showProducts();
+        cout << "1. Add product to the cart\n";
+        cout << "2. Delete product from the cart\n";
+        cout << "3. Place order\n\n";
+        int choice;
+        cin >> choice;
+        switch(choice){
+            case 1:{
+                c.add(s);
+                break;
+            }
+            case 2:{
+                c.del();
+                break;
+            }
+            case 3:{
+                c.buy();
+                k = 0;
+                break;
+            }
+        }
+    }
+  }
+  else cout<<"\t Invalid user!";
+  delete[] p1,p2,p3,p4;
   return 0;
 }

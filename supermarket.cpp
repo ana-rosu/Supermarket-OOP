@@ -1,4 +1,6 @@
 #include <iostream>
+#include <conio.h>
+#include <ctime>
 #include <vector>
 using namespace std;
 
@@ -16,6 +18,7 @@ public:
     virtual istream& read(istream&) = 0;
     virtual ostream& print(ostream&) const = 0;
 };
+
 class Product: public IOInterface{
 protected:
   string name;
@@ -26,6 +29,7 @@ public:
   Product(string, int, double);
   Product(const Product&);
   Product& operator =(const Product&);
+  string getName(){return this->name;}
   istream& read(istream&);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, Product&);
@@ -85,6 +89,7 @@ public:
   bool isOnSale() const;
   ~ElectricalAppliance(){}
 };
+
 class Food: public Product{
 public: 
   enum category{
@@ -108,11 +113,38 @@ public:
   bool isOnSale() const;
   ~Food(){}
 };
+
 class Order{
   // string date;
   // float time;
   vector<Product*> productList;
 };
+class Supermarket{
+  string name;
+  int foundationYear;
+  vector<Product*> products;
+public:
+  Supermarket();
+  Supermarket(string, int);
+  Supermarket(string, int, vector<Product*>);
+  Supermarket(const Supermarket&);
+  Supermarket& operator=(const Supermarket&);
+  friend istream& operator>>(istream&, Supermarket&);
+  friend ostream& operator<<(ostream&, const Supermarket&);
+// welcome message
+  void welcome();
+// CRUD operations
+  void addProduct();
+  void showProducts();
+  void editProduct();
+  void delProduct();
+  // functionality
+  int calcRevenue(){
+    //based on all orders placed
+  }
+};
+////////////////////////////////////////
+
 Product::Product(){
   this->name = "anonymous";
   this->quantity = 0;
@@ -192,7 +224,7 @@ istream& HouseholdProduct::read(istream& in){
 ostream& HouseholdProduct::print(ostream& out) const {
   Product::print(out);
   out<<"Material: "<<this->material<<endl;
-  out<<"Hazardous: [0/1]"<<(this->hazardous == true ? "Yes" : "No")<<endl;
+  out<<"Hazardous: "<<(this->hazardous == true ? "Yes" : "No")<<endl;
   return out;
 } 
 istream& operator>>(istream& in, HouseholdProduct& h){
@@ -283,8 +315,20 @@ istream& ElectricalAppliance::read(istream& in){
   in>>this->powerConsumption;
   cout<<"Enter noise level: ";
   in>>this->noiseLevel;
-  cout<<"Enter features: ";
-  //enter features
+  cout<<"Enter features: \n";
+  if(!this->features.empty())
+    this->features.clear();
+  while(true){
+    cout<<"1. Add feature\n0. Stop\n";
+    int choice;
+    cin>>choice;
+    if(choice == 0)
+      break;
+    else{    
+      string feature;
+      cin>>feature;
+      this->features.push_back(feature);}
+  }
   return in;
 } 
 ostream& ElectricalAppliance::print(ostream& out) const {
@@ -293,7 +337,9 @@ ostream& ElectricalAppliance::print(ostream& out) const {
   out<<"Power consumption: "<<this->powerConsumption<<" watts"<<endl;
   out<<"Noise level: "<<this->noiseLevel<<endl;
   out<<"Features: ";
-  //print features
+  for(int i = 0; i < this->features.size()-1; ++i)
+    out<<this->features[i]<<", ";
+  out<<this->features[this->features.size()-1];
   return out;
 } 
 istream& operator>>(istream& in, ElectricalAppliance& ea){
@@ -378,9 +424,170 @@ bool Food::isOnSale() const{
     return 0;
   return 1;
 }
+/////////////////////////////////////////
+
+Supermarket::Supermarket(){
+  this->name = "Unknown";
+  this->foundationYear = 0;
+  this->products = {};
+}
+Supermarket::Supermarket(string name, int foundationYear){
+  this->name = name;
+  this->foundationYear = foundationYear;
+  this->products = {};
+}
+Supermarket::Supermarket(string name, int foundationYear, vector<Product*> products){
+  this->name = name;
+  this->foundationYear = foundationYear;
+  this->products = products;
+}
+Supermarket::Supermarket(const Supermarket& s){
+  this->name = s.name;
+  this->foundationYear = s.foundationYear;
+  this->products = s.products;
+}
+Supermarket& Supermarket::operator=(const Supermarket& s){
+  if(this != &s){
+    this->name = s.name;
+    this->foundationYear = s.foundationYear;
+    this->products = s.products;
+  }
+  return *this;
+}
+istream& operator>>(istream& in, Supermarket& s){
+  cout<<"Enter the name of the supermarket: ";
+  in>>s.name;
+  cout<<"Enter the year of the foundation: ";
+  in>>s.foundationYear;
+  cout<<"How many products do you want to add: ";
+  int nr;
+  in>>nr;
+  if(nr){
+    cout<<"Enter the products of the supermarket: \n\n";
+    if(!s.products.empty())
+      s.products.clear();
+    while(nr){
+      s.addProduct();
+      nr--;
+    }
+  }
+  return in;
+}
+ostream& operator<<(ostream& out, const Supermarket& s){
+  out<<"Name of the supermarket: "<<s.name<<endl;
+  out<<"Year of foundation: "<<s.foundationYear<<endl;
+  out<<"Products: ";
+  if(s.products.empty())
+    out<<"0";
+  else{
+    out<<"\n\n";
+    for(int i = 0; i < s.products.size(); ++i)
+      out<<*s.products[i]<<endl;
+  }
+  return out;
+}
+void Supermarket::welcome(){
+  cout<<"\n\t Welcome to "<<this->name<<" supermarket! Shopping made easy since "<<this->foundationYear<<" :)\n\n";
+}
+void Supermarket::addProduct(){
+  cout<<"What type of product do you want to add?\n";
+  cout<<"\t 1. Food\n\t 2. Household item\n\t 3. Electrical device\n\t 4. Electrical appliance\n";
+  int choice;
+  cin>>choice;
+  Product* p;
+  switch (choice){
+    case 1:{
+      p = new Food();
+      break;
+    }
+    case 2:{
+      p = new HouseholdProduct();
+      break;
+    }
+    case 3:{
+      p = new ElectricalProduct();
+      break;
+    }
+    case 4:{
+      p = new ElectricalAppliance();
+      break;
+    }
+    default:
+      cout<<"Invalid choice. Please enter a number in range 1-4.";
+      break;
+  }
+  cin>>*p;
+  products.push_back(p);
+  cout<<"\nProduct added succesfully!\n\n";
+}
+void Supermarket::editProduct(){
+  cout<<"What product do you want to edit? Enter the name: ";
+  string name;
+  cin>>name;
+  for(int i=0; i<products.size();i++)
+    if(products[i]->getName() == name)
+      cin>>*products[i];
+  cout<<"\nProduct edited succesfully!\n\n";
+}
+void Supermarket::showProducts(){
+  cout<<"\t Here's a list of all the products of our supermarket!\n\n";
+  cout<<"--------------------------------\n";
+  for(int i = 0; i < products.size(); ++i){
+    cout<<*products[i];
+    cout<<"--------------------------------\n";
+  }
+  cout<<endl;
+}
+void Supermarket::delProduct(){
+  cout<<"What product do you want to delete? Enter the name: ";
+  string name;
+  cin>>name;
+  vector<Product*> updatedProducts;
+  for(int i=0; i<products.size();i++)
+    if(products[i]->getName() != name)
+      updatedProducts.push_back(products[i]);
+    
+  products = updatedProducts;
+  cout<<"\nProduct deleted succesfully!\n\n";
+}
+////////////////////////////////////////
 
 int main(){
-  // ElectricalProduct h;
+  Supermarket s("Clevr", 1986);
+  int k = 1;
+  s.welcome();
+  while(k == 1){
+      cout << "1. Add product\n";
+      cout << "2. Show products\n";
+      cout << "3. Edit product\n";
+      cout << "4. Delete product\n";
+      cout << "5. Stop\n\n";
+      int choice;
+      cin >> choice;
+      switch(choice){
+          case 1:{
+              s.addProduct();
+              break;
+          }
+          case 2:{
+              s.showProducts();
+              break;
+          }
+          case 3:{
+              s.editProduct();
+              break;
+          }
+          case 4:{
+              s.delProduct();
+              break;
+          }
+          case 5:{
+              k = 0;
+              break;
+          }
+      }
+  }
+  // ElectricalAppliance h;
   // cin>>h;
   // cout<<h;
   // Food f("tomato",20,1.5,1, "10.10.2020",2,15,1);
@@ -388,5 +595,10 @@ int main(){
   //enum
   //functionalities
   //menu
+  // CURRENT DATE AND TIME
+  // time_t tim = time(0);
+  // tm* gottime =  localtime(&tim);
+  // cout<<gottime->tm_hour<<":"<<gottime->tm_min<<endl;
+  // cout<<gottime->tm_mday<<".0"<<gottime->tm_mon+1<<"."<<gottime->tm_year+1900;
   return 0;
 }

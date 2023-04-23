@@ -26,14 +26,65 @@ public:
   Product(string, int, double);
   Product(const Product&);
   Product& operator =(const Product&);
-  friend istream& operator >>(istream&, Product&);
-  friend ostream& operator <<(ostream&, const Product&);
   istream& read(istream&);
   ostream& print(ostream&) const;
+  friend istream& operator >>(istream&, Product&);
+  friend ostream& operator <<(ostream&, const Product&);
   virtual bool isOnSale() const = 0;
   virtual ~Product(){};
 };
 
+class HouseholdProduct: virtual public Product{
+protected:
+  string material;
+  bool hazardous;
+public:
+  HouseholdProduct();
+  HouseholdProduct(string, int, double, string, bool);
+  HouseholdProduct(const HouseholdProduct&);
+  HouseholdProduct& operator=(const HouseholdProduct&);
+  istream& read(istream&);
+  ostream& print(ostream&) const;
+  friend istream& operator >>(istream&, HouseholdProduct&);
+  friend ostream& operator <<(ostream&, const HouseholdProduct&);
+  bool isOnSale() const;
+  virtual ~HouseholdProduct(){}
+};
+
+class ElectricalProduct: virtual public Product{
+protected:
+  int warrantyYears;
+  int powerConsumption;
+public:
+  ElectricalProduct();
+  ElectricalProduct(string, int, double, int, int);
+  ElectricalProduct(const ElectricalProduct&);
+  ElectricalProduct& operator=(const ElectricalProduct&);
+  istream& read(istream&);
+  ostream& print(ostream&) const;
+  friend istream& operator >>(istream&, ElectricalProduct&);
+  friend ostream& operator <<(ostream&, const ElectricalProduct&);
+  bool isOnSale() const;
+  virtual ~ElectricalProduct(){}
+};
+
+class ElectricalAppliance: public HouseholdProduct, public ElectricalProduct{
+  //enum noiseLvl = {low, medium, high};
+  int noiseLevel;
+  vector<string> features; 
+   //self-cleaning, automatic shut-off, water resistance, wi-fi, bluetooth
+public:
+  ElectricalAppliance();
+  ElectricalAppliance(string, int, double, string, bool, int, int, int, vector<string>);
+  ElectricalAppliance(const ElectricalAppliance&);
+  ElectricalAppliance& operator=(const ElectricalAppliance&);
+  istream& read(istream&);
+  ostream& print(ostream&) const;
+  friend istream& operator >>(istream&, ElectricalAppliance&);
+  friend ostream& operator <<(ostream&, const ElectricalAppliance&);
+  bool isOnSale() const;
+  ~ElectricalAppliance(){}
+};
 class Food: public Product{
 public: 
   enum category{
@@ -50,40 +101,13 @@ public:
   Food(string, int, double, category, string, int, int, bool);
   Food(const Food&);
   Food& operator =(const Food&);
-  friend istream& operator >>(istream&, Food&);
-  friend ostream& operator <<(ostream&, const Food&);
   istream& read(istream&);
   ostream& print(ostream&) const;
+  friend istream& operator >>(istream&, Food&);
+  friend ostream& operator <<(ostream&, const Food&);
   bool isOnSale() const;
   ~Food(){}
 };
-
-// class HouseholdProduct: virtual public Product{
-//   string material;
-//   bool hazardous;
-// public:
-//   HouseholdProduct();
-//   HouseholdProduct(string, int, double, string, bool);
-//   HouseholdProduct(const HouseholdProduct&);
-//   HouseholdProduct& operator=(const HouseholdProduct&);
-//   virtual ~HouseholdProduct(){}
-// };
-
-// class ElectricalProduct: virtual public Product{
-//   int warranty;
-//   int powerConsumption;
-//   ElectricalProduct();
-//   ElectricalProduct(string, int, double, int, int);
-//   ElectricalProduct(const ElectricalProduct&);
-//   ElectricalProduct& operator=(const ElectricalProduct&);
-//   virtual ~ElectricalProduct(){}
-// };
-
-// class ElectricalAppliance: public HouseholdProduct, public ElectricalProduct{
-//   int noiseLevel;
-//   vector<string> features; 
-//  //self-cleaning, automatic shut-off, water resistance, wi-fi, bluetooth
-// };
 class Order{
   // string date;
   // float time;
@@ -125,7 +149,7 @@ istream& Product::read(istream& in){
 ostream& Product::print(ostream& out) const{
   out<<"Name: "<<this->name<<endl;
   out<<"Quantity: "<<this->quantity<<" buc"<<endl;
-  out<<"Price: "<<this->price<<"$"<<endl;
+  out<<"Price: "<<this->price<<" $"<<endl;
   return out;
 }
 istream& operator>>(istream& in, Product& p){
@@ -134,6 +158,156 @@ istream& operator>>(istream& in, Product& p){
 ostream& operator<<(ostream& out, const Product& p) {
   return p.print(out);
 }
+
+////////////////////////////////////////
+
+HouseholdProduct::HouseholdProduct():Product(){
+  this->material = "unknown";
+  this->hazardous = false;
+}
+HouseholdProduct::HouseholdProduct(string name, int quantity, double price, string material, bool hazardous):Product(name, quantity, price){
+  this->material = material;
+  this->hazardous = hazardous;
+}
+HouseholdProduct::HouseholdProduct(const HouseholdProduct& h):Product(h){
+  this->material = h.material;
+  this->hazardous = h.hazardous;
+}
+HouseholdProduct& HouseholdProduct::operator=(const HouseholdProduct& h){
+  if(this != &h){
+    Product::operator=(h);
+    this->material = h.material;
+    this->hazardous = h.hazardous;
+  }
+  return *this;
+}
+istream& HouseholdProduct::read(istream& in){
+  Product::read(in);
+  cout<<"Enter material: ";
+  in>>this->material;
+  cout<<"Is hazardous? [0/1] ";
+  in>>this->hazardous;
+  return in;
+} 
+ostream& HouseholdProduct::print(ostream& out) const {
+  Product::print(out);
+  out<<"Material: "<<this->material<<endl;
+  out<<"Hazardous: [0/1]"<<(this->hazardous == true ? "Yes" : "No")<<endl;
+  return out;
+} 
+istream& operator>>(istream& in, HouseholdProduct& h){
+  return h.read(in);
+}
+ostream& operator<<(ostream& out, const HouseholdProduct& h){
+  return h.print(out);
+}
+//to do: implement some logic here
+bool HouseholdProduct::isOnSale() const{
+  return 1;
+}
+
+////////////////////////////////////////
+
+ElectricalProduct::ElectricalProduct():Product(){
+  this->warrantyYears = 0;
+  this->powerConsumption = 0;
+}
+ElectricalProduct::ElectricalProduct(string name, int quantity, double price, int warrantyYears, int powerConsumption):Product(name, quantity, price){
+  this->warrantyYears = warrantyYears;
+  this->powerConsumption = powerConsumption;
+}
+ElectricalProduct::ElectricalProduct(const ElectricalProduct& ep):Product(ep){
+  this->warrantyYears = ep.warrantyYears;
+  this->powerConsumption = ep.powerConsumption;
+}
+ElectricalProduct& ElectricalProduct::operator=(const ElectricalProduct& ep){
+  if(this != &ep){
+    Product::operator=(ep);
+    this->warrantyYears = ep.warrantyYears;
+    this->powerConsumption = ep.powerConsumption;
+  }
+  return *this;
+}
+istream& ElectricalProduct::read(istream& in){
+  Product::read(in);
+  cout<<"Enter warranty years: ";
+  in>>this->warrantyYears;
+  cout<<"Enter power consumption ";
+  in>>this->powerConsumption;
+  return in;
+} 
+ostream& ElectricalProduct::print(ostream& out) const {
+  Product::print(out);
+  out<<"Warranty years: "<<this->warrantyYears<<" yrs"<<endl;
+  out<<"Power consumption: "<<this->powerConsumption<<" watts"<<endl;
+  return out;
+} 
+istream& operator>>(istream& in, ElectricalProduct& ep){
+  return ep.read(in);
+}
+ostream& operator<<(ostream& out, const ElectricalProduct& ep){
+  return ep.print(out);
+}
+bool ElectricalProduct::isOnSale() const{
+  return 0;
+}
+
+////////////////////////////////////////
+
+ElectricalAppliance::ElectricalAppliance():Product(), HouseholdProduct(), ElectricalProduct(){
+  this->noiseLevel = 0;
+  this->features = {};
+}
+ElectricalAppliance::ElectricalAppliance(string name, int quantity, double price, string material, bool hazardous, int warrantyYears, int powerConsumption, int noiseLevel, vector<string> features):Product(name, quantity, price), HouseholdProduct(name, quantity, price,material, hazardous), ElectricalProduct(name, quantity, price, warrantyYears, powerConsumption){
+  this->noiseLevel = noiseLevel;
+  this->features = features;
+}
+ElectricalAppliance::ElectricalAppliance(const ElectricalAppliance& ea):Product(ea), HouseholdProduct(ea), ElectricalProduct(ea){
+  this->noiseLevel = ea.noiseLevel;
+  this->features = ea.features;
+}
+ElectricalAppliance& ElectricalAppliance::operator=(const ElectricalAppliance& ea){
+  if(this != &ea){
+    HouseholdProduct::operator=(ea);
+    ElectricalProduct::operator=(ea);
+    this->noiseLevel = ea.noiseLevel;
+    this->features = ea.features;
+  }
+  return *this;
+}
+istream& ElectricalAppliance::read(istream& in){
+  HouseholdProduct::read(in);
+  cout<<"Enter warranty years: ";
+  in>>this->warrantyYears;
+  cout<<"Enter power consumption ";
+  in>>this->powerConsumption;
+  cout<<"Enter noise level: ";
+  in>>this->noiseLevel;
+  cout<<"Enter features: ";
+  //enter features
+  return in;
+} 
+ostream& ElectricalAppliance::print(ostream& out) const {
+  HouseholdProduct::print(out);
+  out<<"Warranty years: "<<this->warrantyYears<<" yrs"<<endl;
+  out<<"Power consumption: "<<this->powerConsumption<<" watts"<<endl;
+  out<<"Noise level: "<<this->noiseLevel<<endl;
+  out<<"Features: ";
+  //print features
+  return out;
+} 
+istream& operator>>(istream& in, ElectricalAppliance& ea){
+  return ea.read(in);
+}
+ostream& operator<<(ostream& out, const ElectricalAppliance& ea){
+  return ea.print(out);
+}
+//to do: implement some logic here 
+bool ElectricalAppliance::isOnSale() const{
+  return 0;
+}
+////////////////////////////////////////
+
 Food::Food():Product(){
   this->foodCat = vegetables;
   this->expDate = "N/A";
@@ -204,9 +378,15 @@ bool Food::isOnSale() const{
     return 0;
   return 1;
 }
+
 int main(){
-  // Food f;
-  // cin>>f;
+  // ElectricalProduct h;
+  // cin>>h;
+  // cout<<h;
+  // Food f("tomato",20,1.5,1, "10.10.2020",2,15,1);
   // cout<<f;
+  //enum
+  //functionalities
+  //menu
   return 0;
 }

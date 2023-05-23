@@ -1,23 +1,29 @@
+#include <typeinfo>
 #include <iostream>
 #include <fstream>
 #include <conio.h>
 #include <ctime>
 #include <vector>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
 using namespace std;
 
-class IOInterface;
-class Supermarket;
-class Cart;
-class Product;
-class HouseholdProduct;
-class ElectricalProduct;
-class ElectricalAppliance;
-class Food;
-
+//this class publicly inherits from the std::exception class => FileNotFound becomes
+// a specific type of exception that can be caught and handled using the standard exception handling mechanism.
+class FileNotFound : public exception {
+public:
+// this is a member function of the FileNotFound class
+// it overrides the what() function defined in the base class std::exception
+    virtual const char* what() const throw(){
+        return "File not found!";
+    }
+};
 
 class IOInterface{
 public:
-    virtual istream& read(istream&) = 0;
+    virtual istream& read(istream&, bool) = 0;
     virtual ostream& print(ostream&) const = 0;
 };
 
@@ -35,7 +41,7 @@ public:
   double getPrice(){return this->price;}
   int getQuantity(){return this->quantity;}
   void setQuantity(int quantity){this->quantity = quantity;}
-  istream& read(istream&);
+  istream& read(istream&, bool);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, Product&);
   friend ostream& operator <<(ostream&, const Product&);
@@ -52,7 +58,7 @@ public:
   HouseholdProduct(string, int, double, string, bool);
   HouseholdProduct(const HouseholdProduct&);
   HouseholdProduct& operator=(const HouseholdProduct&);
-  istream& read(istream&);
+  istream& read(istream&, bool);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, HouseholdProduct&);
   friend ostream& operator <<(ostream&, const HouseholdProduct&);
@@ -69,7 +75,7 @@ public:
   ElectricalProduct(string, int, double, int, int);
   ElectricalProduct(const ElectricalProduct&);
   ElectricalProduct& operator=(const ElectricalProduct&);
-  istream& read(istream&);
+  istream& read(istream&, bool);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, ElectricalProduct&);
   friend ostream& operator <<(ostream&, const ElectricalProduct&);
@@ -80,14 +86,14 @@ public:
 class ElectricalAppliance: public HouseholdProduct, public ElectricalProduct{
   //enum noiseLvl = {low, medium, high};
   int noiseLevel;
-  vector<string> features; 
+  vector<string> features;
    //self-cleaning, automatic shut-off, water resistance, wi-fi, bluetooth
 public:
   ElectricalAppliance();
   ElectricalAppliance(string, int, double, string, bool, int, int, int, vector<string>);
   ElectricalAppliance(const ElectricalAppliance&);
   ElectricalAppliance& operator=(const ElectricalAppliance&);
-  istream& read(istream&);
+  istream& read(istream&, bool);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, ElectricalAppliance&);
   friend ostream& operator <<(ostream&, const ElectricalAppliance&);
@@ -96,7 +102,7 @@ public:
 };
 
 class Food: public Product{
-public: 
+public:
   enum category{
     vegetables, fruits, diary, meat, bakery, snacks
   };
@@ -106,32 +112,17 @@ private:
   int kcal;
   int grams;
   bool organic;
-public: 
+public:
   Food();
   Food(string, int, double, category, string, int, int, bool);
   Food(const Food&);
   Food& operator =(const Food&);
-  istream& read(istream&);
+  istream& read(istream&, bool);
   ostream& print(ostream&) const;
   friend istream& operator >>(istream&, Food&);
   friend ostream& operator <<(ostream&, const Food&);
   bool isOnSale() const;
   ~Food(){}
-};
-
-class Cart{
-  vector<Product*> cart;
-public:
-  Cart();
-  Cart(vector<Product*>);
-  Cart(const Cart&);
-  Cart& operator=(const Cart&);
-  friend istream& operator>>(istream&, Cart&);
-  friend ostream& operator<<(ostream&, const Cart&);
-  void add(Supermarket&);
-  void del();
-  void buy();
-  ~Cart(){}
 };
 
 class Supermarket{
@@ -146,14 +137,7 @@ public:
   Supermarket& operator=(const Supermarket&);
   friend istream& operator>>(istream&, Supermarket&);
   friend ostream& operator<<(ostream&, const Supermarket&);
-  vector<Product*> getProducts() const{return this->products;}
-  void setProducts(vector<Product*> products) {
-    if(!this->products.empty())
-      this->products.clear();
-    for(int i = 0; i < products.size(); ++i)
-      this->products[i] = products[i];
-  }
-  ~Supermarket(){}
+  const vector<Product*> getProducts() const{return this->products;}
 // welcome message
   void welcome();
 // CRUD operations
@@ -162,11 +146,61 @@ public:
   void editProduct();
   void delProduct();
   // functionality
-  int calcRevenue(){
-    //based on all orders placed
-  }
-  ~Supermarket(){}
+  double calcRevenue(map<int, double>);
+  //import data
+  void importData();
+
+  ~Supermarket();
 };
+
+class Cart{
+  vector<Product*> cart;
+public:
+  Cart();
+  Cart(vector<Product*>);
+  Cart(const Cart&);
+  Cart& operator=(const Cart&);
+  friend istream& operator>>(istream&, Cart&);
+  friend ostream& operator<<(ostream&, const Cart&);
+  void add(Supermarket&);
+  void del(Supermarket&);
+  double buy();
+  ~Cart();
+};
+
+class App {
+private:
+    static App* instance;
+    static int nrOfInstances;
+    map<int, double> sales;
+    int cnt;
+    Supermarket s;
+    Cart c;
+    App():cnt(1){
+        s.importData();
+        system("pause");
+    };
+    App(const App&)=delete;
+    App& operator=(const App&) = delete;
+public:
+    static App* getInstance(){
+        nrOfInstances++;
+        if(!instance)
+            instance=new App();
+        return instance;
+    }
+    void run();
+ ~App(){
+    nrOfInstances--;
+    if(nrOfInstances==0)
+        if(instance)
+            delete instance;
+
+}
+};
+App* App::instance = nullptr;
+int App::nrOfInstances = 0;
+
 ////////////////////////////////////////
 
 Product::Product(){
@@ -192,13 +226,38 @@ Product& Product::operator = (const Product& p){
   }
   return *this;
 }
-istream& Product::read(istream& in){
-  cout<<"Enter the name of the product: ";
-  in>>this->name;
-  cout<<"Enter the quantity: ";
-  in>>this->quantity;
-  cout<<"Enter the price: ";
-  in>>this->price;
+istream& Product::read(istream& in, bool fromFile = 0){
+  if(!fromFile){
+    cout<<"Enter the name of the product: ";
+    getline(in>>ws,this->name);
+
+    cout << "Enter the quantity: ";
+    int q;
+    while (true) {
+        try {
+            if (!(in >> q))
+                throw runtime_error("Invalid input. Please enter an integer: ");
+            if (q < 0) {
+                throw runtime_error("Invalid input. Quantity cannot be negative.\nPlease try again:");
+            }
+            this->quantity = q;
+            break;
+        } catch (const exception& e) {
+            cout << e.what();
+            // when an input operation fails (such as when the user enters invalid data),
+            // the error flag is set, which can prevent further input operations from working correctly.
+            // => reset the error flags, allowing the input stream to be used again
+            in.clear();
+            // discard the remaining characters in the input stream up to AND including the newline character
+            in.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+    }
+  }
+  else {
+    getline(in>>ws,this->name);
+    in>>this->quantity;
+    in>>this->price;
+  }
   return in;
 }
 
@@ -237,20 +296,27 @@ HouseholdProduct& HouseholdProduct::operator=(const HouseholdProduct& h){
   }
   return *this;
 }
-istream& HouseholdProduct::read(istream& in){
-  Product::read(in);
-  cout<<"Enter material: ";
-  in>>this->material;
-  cout<<"Is hazardous? [0/1] ";
-  in>>this->hazardous;
+istream& HouseholdProduct::read(istream& in, bool fromFile = 0){
+  if(!fromFile){
+      Product::read(in);
+      cout<<"Enter material: ";
+      in>>this->material;
+      cout<<"Is hazardous? [0/1] ";
+      in>>this->hazardous;
+  }
+  else {
+    Product::read(in, 1);
+    in>>this->material;
+    in>>this->hazardous;
+  }
   return in;
-} 
+}
 ostream& HouseholdProduct::print(ostream& out) const {
   Product::print(out);
   out<<"Material: "<<this->material<<endl;
   out<<"Hazardous: "<<(this->hazardous == true ? "Yes" : "No")<<endl;
   return out;
-} 
+}
 istream& operator>>(istream& in, HouseholdProduct& h){
   return h.read(in);
 }
@@ -284,20 +350,27 @@ ElectricalProduct& ElectricalProduct::operator=(const ElectricalProduct& ep){
   }
   return *this;
 }
-istream& ElectricalProduct::read(istream& in){
-  Product::read(in);
-  cout<<"Enter warranty years: ";
-  in>>this->warrantyYears;
-  cout<<"Enter power consumption ";
-  in>>this->powerConsumption;
+istream& ElectricalProduct::read(istream& in, bool fromFile = 0){
+  if(!fromFile){
+      Product::read(in);
+      cout<<"Enter warranty years: ";
+      in>>this->warrantyYears;
+      cout<<"Enter power consumption ";
+      in>>this->powerConsumption;
+  }
+  else {
+    Product::read(in,1);
+    in>>this->warrantyYears;
+    in>>this->powerConsumption;
+  }
   return in;
-} 
+}
 ostream& ElectricalProduct::print(ostream& out) const {
   Product::print(out);
   out<<"Warranty years: "<<this->warrantyYears<<" yrs"<<endl;
   out<<"Power consumption: "<<this->powerConsumption<<" watts"<<endl;
   return out;
-} 
+}
 istream& operator>>(istream& in, ElectricalProduct& ep){
   return ep.read(in);
 }
@@ -310,7 +383,7 @@ bool ElectricalProduct::isOnSale() const{
 
 ////////////////////////////////////////
 
-ElectricalAppliance::ElectricalAppliance():Product(), HouseholdProduct(), ElectricalProduct(){
+ElectricalAppliance::ElectricalAppliance(){
   this->noiseLevel = 0;
   this->features = {};
 }
@@ -331,30 +404,49 @@ ElectricalAppliance& ElectricalAppliance::operator=(const ElectricalAppliance& e
   }
   return *this;
 }
-istream& ElectricalAppliance::read(istream& in){
-  HouseholdProduct::read(in);
-  cout<<"Enter warranty years: ";
-  in>>this->warrantyYears;
-  cout<<"Enter power consumption ";
-  in>>this->powerConsumption;
-  cout<<"Enter noise level: ";
-  in>>this->noiseLevel;
-  cout<<"Enter features: \n";
-  if(!this->features.empty())
-    this->features.clear();
-  while(true){
-    cout<<"1. Add feature\n0. Stop\n";
-    int choice;
-    cin>>choice;
-    if(choice == 0)
-      break;
-    else{    
-      string feature;
-      cin>>feature;
-      this->features.push_back(feature);}
+istream& ElectricalAppliance::read(istream& in, bool fromFile = 0){
+  if(!fromFile){
+      HouseholdProduct::read(in);
+      cout<<"Enter warranty years: ";
+      in>>this->warrantyYears;
+      cout<<"Enter power consumption ";
+      in>>this->powerConsumption;
+      cout<<"Enter noise level: ";
+      in>>this->noiseLevel;
+      cout<<"Enter features: \n";
+      if(!this->features.empty())
+        this->features.clear();
+      while(true){
+        cout<<"1. Add feature\n0. Stop\n";
+        int choice;
+        in>>choice;
+        if(choice == 0)
+          break;
+        else{
+          string feature;
+          getline(in>>ws,feature);
+          this->features.push_back(feature);}
+      }
+  } else {
+      HouseholdProduct::read(in,1);
+      in>>this->warrantyYears;
+      in>>this->powerConsumption;
+      in>>this->noiseLevel;
+      if(!this->features.empty())
+        this->features.clear();
+      while(true){
+        int choice;
+        in>>choice;
+        if(choice == 0)
+          break;
+        else{
+          string feature;
+          getline(in>>ws,feature);
+          this->features.push_back(feature);}
+      }
   }
   return in;
-} 
+}
 ostream& ElectricalAppliance::print(ostream& out) const {
   HouseholdProduct::print(out);
   out<<"Warranty years: "<<this->warrantyYears<<" yrs"<<endl;
@@ -363,16 +455,16 @@ ostream& ElectricalAppliance::print(ostream& out) const {
   out<<"Features: ";
   for(int i = 0; i < this->features.size()-1; ++i)
     out<<this->features[i]<<", ";
-  out<<this->features[this->features.size()-1];
+  out<<this->features[this->features.size()-1]<<endl;
   return out;
-} 
+}
 istream& operator>>(istream& in, ElectricalAppliance& ea){
   return ea.read(in);
 }
 ostream& operator<<(ostream& out, const ElectricalAppliance& ea){
   return ea.print(out);
 }
-//to do: implement some logic here 
+//to do: implement some logic here
 bool ElectricalAppliance::isOnSale() const{
   return 0;
 }
@@ -391,14 +483,14 @@ Food::Food(string name, int quantity, double price, category foodCat, string exp
   this->expDate = expDate;
   this->kcal = kcal;
   this->grams = grams;
-  this->organic = organic; 
+  this->organic = organic;
 }
 Food::Food(const Food& f):Product(f){
   this->foodCat = f.foodCat;
   this->expDate = f.expDate;
   this->kcal = f.kcal;
   this->grams = f.grams;
-  this->organic = f.organic; 
+  this->organic = f.organic;
 }
 Food& Food::operator=(const Food& f){
   if(this != &f){
@@ -407,24 +499,45 @@ Food& Food::operator=(const Food& f){
     this->expDate = f.expDate;
     this->kcal = f.kcal;
     this->grams = f.grams;
-    this->organic = f.organic; 
+    this->organic = f.organic;
   }
   return *this;
 }
-istream& Food::read(istream& in){
-  Product::read(in);
-  cout<<"Enter the category of the product:\n[0: vegetables/ 1: fruits/ 2: diary/ 3: meat/ 4: bakery/ 5: snacks] ";
-  int cat;
-  in>>cat;
-  this->foodCat = static_cast<Food::category>(cat);
-  cout<<"Enter the expiration date: ";
-  in>>this->expDate;
-  cout<<"Enter kcal/100g: ";
-  in>>this->kcal;
-  cout<<"Enter the weight in grams: ";
-  in>>this->grams;
-  cout<<"Is organic? [0/1] ";
-  in>>this->organic;
+istream& Food::read(istream& in, bool fromFile = 0){
+  if(!fromFile){
+      Product::read(in);
+      cout<<"Enter the category of the product:\n[0: vegetables/ 1: fruits/ 2: diary/ 3: meat/ 4: bakery/ 5: snacks] ";
+      int cat;
+      while(true){
+        try{
+            in>>cat;
+            if (cat < 0 || cat > 5)
+                throw runtime_error("Invalid category. Please enter a number in the range 0-5: ");
+            else break;
+        }catch(runtime_error& e){
+            cout<<e.what();
+        }
+      }
+      this->foodCat = static_cast<Food::category>(cat);
+      cout<<"Enter the expiration date: ";
+      in>>this->expDate;
+      cout<<"Enter kcal/100g: ";
+      in>>this->kcal;
+      cout<<"Enter the weight in grams: ";
+      in>>this->grams;
+      cout<<"Is organic? [0/1] ";
+      in>>this->organic;
+  }
+  else {
+      Product::read(in,1);
+      int cat;
+      in>>cat;
+      this->foodCat = static_cast<Food::category>(cat);
+      in>>this->expDate;
+      in>>this->kcal;
+      in>>this->grams;
+      in>>this->organic;
+  }
   return in;
 }
 ostream& Food::print(ostream& out) const{
@@ -469,48 +582,140 @@ Cart& Cart::operator=(const Cart& c){
 }
 
 void Cart::add(Supermarket& s){
-  cout<<"Enter the name: ";
   string name;
-  cin>>name;
+  int quantity;
+  cout<<"Enter the name: ";
+  getline(cin>>ws,name);
+  cout<<"Enter the quantity: ";
+  cin>>quantity;
   for(int i = 0; i < s.getProducts().size(); ++i)
     if(s.getProducts()[i]->getName() == name){
       int q = s.getProducts()[i]->getQuantity();
       if(q > 0){
-        q--;
-        this->cart.push_back(s.getProducts()[i]);
+        //update the quantity of the product in the supermarket
+        q-=quantity;
         s.getProducts()[i]->setQuantity(q);
-      }
+
+        //making a copy of the product chosen to buy, in order to add it to the cart with the correct quantity
+        Product* p;
+
+        if(typeid(*s.getProducts()[i]) == typeid(Food))
+           p = new Food(dynamic_cast<Food&>(*s.getProducts()[i]));
+        if(typeid(*s.getProducts()[i]) == typeid(HouseholdProduct))
+           p = new HouseholdProduct(dynamic_cast<HouseholdProduct&>(*s.getProducts()[i]));
+        if(typeid(*s.getProducts()[i]) == typeid(ElectricalProduct))
+           p = new ElectricalProduct(dynamic_cast<ElectricalProduct&>(*s.getProducts()[i]));
+        if(typeid(*s.getProducts()[i]) == typeid(ElectricalAppliance))
+           p = new ElectricalAppliance(dynamic_cast<ElectricalAppliance&>(*s.getProducts()[i]));
+
+        p->setQuantity(quantity);
+        this->cart.push_back(p);
+        }
     }
 }
 
-void Cart::buy(){
+double Cart::buy(){
   ofstream receipt("receipt.out");
+
+  try{
+  //logic error -> cannot perform operations on an empty cart
+    if (this->cart.size() == 0) {
+        throw logic_error("The cart is empty. Cannot perform the order.");
+    }
+  }
+  catch(logic_error& e){
+    cout<<e.what();
+    return -1;
+  }
 
   double sum = 0;
   for(int i = 0; i < this->cart.size(); ++i)
-    sum+=this->cart[i]->getPrice();
+    sum+=(this->cart[i]->getPrice()*this->cart[i]->getQuantity());
 
   time_t tim = time(0);
   tm* gottime =  localtime(&tim);
   receipt<<"Tranzaction time: "<<gottime->tm_mday<<".0"<<gottime->tm_mon+1<<"."<<gottime->tm_year+1900<<" "<<gottime->tm_hour<<":"<<gottime->tm_min<<endl;
 
-  receipt<<"------List of goods------\n";
-  for(int i = 0; i < this->cart.size(); ++i)
-    receipt<<*this->cart[i]<<endl;
-  receipt<<"\nTotal price: "<<sum;
+  receipt<<"\n------List of goods------\n\n";
+  for(int i = 0; i < this->cart.size(); ++i){
+      receipt<<*(this->cart[i])<<endl;
+  }
+
+  receipt<<"\nTotal price: "<<sum<<"$";
+  return sum;
 }
 
-void Cart::del(){
+void Cart::del(Supermarket& s){
   cout<<"What product do you want to delete? Enter the name: ";
   string name;
-  cin>>name;
+  getline(cin>>ws, name);
   vector<Product*> updatedCart;
+
   for(int i=0; i<cart.size();i++)
     if(cart[i]->getName() != name)
       updatedCart.push_back(cart[i]);
-    
+    else {
+      // if the client has only one item of that product, simply update the stock of that specific product in the supermarket
+      if(cart[i]->getQuantity() == 1)
+        for(int i = 0; i < s.getProducts().size(); ++i)
+          if(s.getProducts()[i]->getName() == name)
+            s.getProducts()[i]->setQuantity(s.getProducts()[i]->getQuantity()+1);
+
+      // if the client has more items of that product, ask him how many does he want to delete, if he chooses
+      // to delete all of them, then delete the product entirely from the cart and update the stock in the market, else update the quantity of the product in the cart and also update the stock in the market
+      if(cart[i]->getQuantity() != 1){
+        cout<<"How many items of this product do you want to delete? ";
+        int nr, newQuantity;
+        cin>>nr;
+
+        //input validation
+        try{
+          if(nr > cart[i]->getQuantity() || nr < 0)
+            throw runtime_error("Invalid quantity!\n");
+        }
+        catch(const runtime_error& e) {
+            cout<<e.what();
+            while(nr > cart[i]->getQuantity() || nr < 0){
+              cout<<"\nEnter a number less or equal to the quantity in your cart!! ";
+              cin>>nr;
+            }
+        }
+
+        //update the stock in the supermarket
+        for(int i = 0; i < s.getProducts().size(); ++i)
+          if(s.getProducts()[i]->getName() == name)
+            s.getProducts()[i]->setQuantity(s.getProducts()[i]->getQuantity()+nr);
+
+        //update the quantity of the product in the cart
+        newQuantity = cart[i]->getQuantity() - nr;
+        if(newQuantity > 0){
+          //product is an abstract class so I can't make a copy by instantiating Product* p = new Product(*cart[i]);
+          Product* p;
+
+          if(typeid(*cart[i]) == typeid(Food))
+            p = new Food(dynamic_cast<Food&>(*cart[i]));
+          if(typeid(*cart[i]) == typeid(HouseholdProduct))
+            p = new HouseholdProduct(dynamic_cast<HouseholdProduct&>(*cart[i]));
+          if(typeid(*cart[i]) == typeid(ElectricalProduct))
+            p = new ElectricalProduct(dynamic_cast<ElectricalProduct&>(*cart[i]));
+          if(typeid(*cart[i]) == typeid(ElectricalAppliance))
+            p = new ElectricalAppliance(dynamic_cast<ElectricalAppliance&>(*cart[i]));
+
+          p->setQuantity(newQuantity);
+          updatedCart.push_back(p);
+        }
+      }
+    }
   cart = updatedCart;
+  for(auto product : updatedCart)
+    delete product;
+  updatedCart.clear();
   cout<<"\nProduct deleted succesfully!\n\n";
+}
+Cart::~Cart(){
+    for(auto productPtr : cart)
+      delete productPtr;
+    cart.clear();
 }
 
 /////////////////////////////////////////
@@ -576,34 +781,92 @@ ostream& operator<<(ostream& out, const Supermarket& s){
   return out;
 }
 void Supermarket::welcome(){
+//  system("cls");
   cout<<"\n\t Welcome to "<<this->name<<" supermarket! Shopping made easy since "<<this->foundationYear<<" :)\n\n";
+}
+void Supermarket::importData(){
+    try {
+        cout<<"Please provide the name of the file from which to import data:  ";
+        string file;
+        cin>>file;
+        ifstream fin(file);
+
+        if(!fin)
+            throw FileNotFound();
+        else cout<<"\nData was imported succesfully!!\n\n";
+
+        fin>>this->name;
+        fin>>this->foundationYear;
+
+        string productType;
+        while(fin>>productType){
+            if(productType == "FOOD"){
+                // this line dynamically allocates memory for a Food object on the heap and assigns its address to the pointer f.
+                // now f points to a dynamically created Food object.
+                Food* f = new Food();
+                // reads input from the file and stores it in the Food object pointed to by f
+                // operator >> is overloaded
+                (*f).read(fin, 1);
+
+                //adds the pointer f to the listOfProducts vector
+                this->products.push_back(f);
+                }
+            if(productType == "HOUSEHOLD"){
+                HouseholdProduct* hp = new HouseholdProduct();
+                (*hp).read(fin, 1);
+                this->products.push_back(hp);
+                }
+            if(productType == "ELECTRICAL"){
+                ElectricalProduct* e = new ElectricalProduct();
+                (*e).read(fin, 1);
+                this->products.push_back(e);
+                }
+            if(productType == "ELECTRICAL-APPLIANCE"){
+                ElectricalAppliance* ea = new ElectricalAppliance();
+                (*ea).read(fin, 1);
+                this->products.push_back(ea);
+            }
+        }
+        fin.close();
+    }
+    catch(FileNotFound& e){
+        cout<<e.what()<<endl;
+    }
 }
 void Supermarket::addProduct(){
   cout<<"What type of product do you want to add?\n";
   cout<<"\t 1. Food\n\t 2. Household item\n\t 3. Electrical device\n\t 4. Electrical appliance\n";
   int choice;
-  cin>>choice;
   Product* p;
-  switch (choice){
-    case 1:{
-      p = new Food();
-      break;
-    }
-    case 2:{
-      p = new HouseholdProduct();
-      break;
-    }
-    case 3:{
-      p = new ElectricalProduct();
-      break;
-    }
-    case 4:{
-      p = new ElectricalAppliance();
-      break;
-    }
-    default:
-      cout<<"Invalid choice. Please enter a number in range 1-4.";
-      break;
+  while(true){
+      try{
+          cin>>choice;
+          switch (choice){
+            case 1:{
+              p = new Food();
+              break;
+            }
+            case 2:{
+              p = new HouseholdProduct();
+              break;
+            }
+            case 3:{
+              p = new ElectricalProduct();
+              break;
+            }
+            case 4:{
+              p = new ElectricalAppliance();
+              break;
+            }
+            default:{
+              throw runtime_error("Invalid choice. Please enter a number in the range 1-4.");
+            }
+          }
+          //break the loop if input is valid
+          break;
+      } catch (const exception& e) {
+                cout << e.what() << " Please try again: ";
+      }
   }
   cin>>*p;
   products.push_back(p);
@@ -635,87 +898,294 @@ void Supermarket::delProduct(){
   for(int i=0; i<products.size();i++)
     if(products[i]->getName() != name)
       updatedProducts.push_back(products[i]);
-    
+
   products = updatedProducts;
+  for(auto pr : updatedProducts)
+    delete pr;
   cout<<"\nProduct deleted succesfully!\n\n";
+}
+double Supermarket::calcRevenue(map<int, double> sales){
+  double rev = 0;
+  map<int, double>::iterator it;
+  for(auto it = sales.begin(); it != sales.end(); it++)
+    rev+=it->second;
+  return rev;
+}
+Supermarket::~Supermarket(){
+    for(auto productPtr : products)
+      delete productPtr;
+    products.clear();
 }
 
 ////////////////////////////////////////
 
+// Template functions
+// Sort products by ascending price
+bool compareByPrice(Product* p1, Product* p2) {
+    return p1->getPrice() < p2->getPrice();
+}
+// Sort products by alphabetical order
+bool compareByName(Product* p1, Product* p2) {
+    int res = p1->getName().compare(p2->getName());
+    return res < 0;
+}
+template <typename T>
+vector<Product*> sortProducts(vector<Product*> products, T func) {
+  vector<Product*> sortedProducts;
+  for (const auto& product : products) {
+    Product* p;
+    if(typeid(*product) == typeid(Food))
+      p = new Food(dynamic_cast<Food&>(*product));
+    if(typeid(*product) == typeid(HouseholdProduct))
+      p = new HouseholdProduct(dynamic_cast<HouseholdProduct&>(*product));
+    if(typeid(*product) == typeid(ElectricalProduct))
+      p = new ElectricalProduct(dynamic_cast<ElectricalProduct&>(*product));
+    if(typeid(*product) == typeid(ElectricalAppliance))
+      p = new ElectricalAppliance(dynamic_cast<ElectricalAppliance&>(*product));
+    sortedProducts.push_back(p);
+  }
+  sort(sortedProducts.begin(), sortedProducts.end(), func);
+  return sortedProducts;
+}
+// Filter products
+bool isProductExpensive(Product* product) {
+    return product->getPrice() > 100.0;
+}
+bool isProductFood(Product* product){
+  if(dynamic_cast<Food*>(product))
+    return true;
+  return false;
+}
+bool isProductHousehold(Product* product){
+  if(dynamic_cast<HouseholdProduct*>(product))
+    return true;
+  return false;
+}
+bool isProductElectrical(Product* product){
+  if(dynamic_cast<ElectricalProduct*>(product))
+    return true;
+  return false;
+}
+bool isProductElectricalAppliance(Product* product){
+  if(dynamic_cast<ElectricalAppliance*>(product))
+    return true;
+  return false;
+}
+
+template <typename T>
+set<Product*> filterProducts(vector<Product*> products, T func) {
+    set<Product*> filteredProducts;
+    for (const auto& product : products) {
+        if (func(product)) {
+          Product* p;
+        if(typeid(*product) == typeid(Food))
+          p = new Food(dynamic_cast<Food&>(*product));
+        if(typeid(*product) == typeid(HouseholdProduct))
+          p = new HouseholdProduct(dynamic_cast<HouseholdProduct&>(*product));
+        if(typeid(*product) == typeid(ElectricalProduct))
+          p = new ElectricalProduct(dynamic_cast<ElectricalProduct&>(*product));
+        if(typeid(*product) == typeid(ElectricalAppliance))
+          p = new ElectricalAppliance(dynamic_cast<ElectricalAppliance&>(*product));
+          filteredProducts.insert(p);
+        }
+    }
+    return filteredProducts;
+}
+template<typename Container>
+void printProducts(Container& products) {
+    cout << "--------------------------------\n";
+    for (const auto& productPtr : products) {
+        cout << *productPtr;
+        cout << "--------------------------------\n";
+    }
+    cout << endl;
+}
+template<typename Container>
+void clearProducts(Container& products){
+    for(const auto& product : products)
+        delete product;
+
+    products.clear();
+}
+
+/////////////////////////////////////////
+
+void App::run(){
+  int k = 0;
+  while(k!=-1){
+      system("cls");
+      s.welcome();
+      cout<<"1. Admin\n2. Client\n3. Exit\n\n";
+      cin>>k;
+      cout<<endl;
+      if(k == 1){
+        while(k == 1){
+            cout << "1. Add product\n";
+            cout << "2. Show products\n";
+            cout << "3. Edit product\n";
+            cout << "4. Delete product\n\n";
+            cout << "5. Supermarket's revenue\n";
+            cout << "6. Back to menu\n\n";
+            int choice;
+            cin >> choice;
+            switch(choice){
+                case 1:{
+                    s.addProduct();
+                    break;
+                }
+                case 2:{
+                    s.showProducts();
+                    break;
+                }
+                case 3:{
+                    s.editProduct();
+                    break;
+                }
+                case 4:{
+                    s.delProduct();
+                    break;
+                }
+                case 5:{
+                    cout<<"\nCurrent revenue: "<<s.calcRevenue(sales)<<"$\n\n";
+                    break;
+                }
+                case 6:{
+                    k = 0;
+                    break;
+                }
+            }
+        }
+      }
+      else if (k == 2){
+            s.showProducts();
+        while(k == 2){
+
+            cout << "1. Sort products by price\n";
+            cout << "2. Sort products by name\n";
+            cout << "3. Show only expensive products\n";
+            cout << "4. Filter products by category\n\n";
+            cout << "5. Add product to the cart\n";
+            cout << "6. Delete product from the cart\n";
+            cout << "7. Place order\n";
+            cout << "8. Back to menu\n\n";
+            int choice;
+            cin >> choice;
+            switch(choice){
+                case 1:{
+                    vector<Product*> a = sortProducts(s.getProducts(), compareByPrice);
+                    printProducts(a);
+                    clearProducts(a);
+                    break;
+                }
+                case 2:{
+                    vector<Product*> b = sortProducts(s.getProducts(), compareByName);
+                    printProducts(b);
+                    clearProducts(b);
+                    break;
+                }
+                case 3:{
+                    set<Product*> onlyExpensive = filterProducts(s.getProducts(), isProductExpensive);
+                    printProducts(onlyExpensive);
+                    clearProducts(onlyExpensive);
+                    break;
+                }
+                case 4:{
+                    cout<<"Enter the category [1-Food, 2-Household Products, 3-Electrical Products, 4-Electrical Appliance]: ";
+                    int c;
+                    cin>>c;
+                    switch(c){
+                        case 1:{
+                            set<Product*> onlyFood = filterProducts(s.getProducts(), isProductFood);
+                            printProducts(onlyFood);
+                            clearProducts(onlyFood);
+                            break;
+                        }
+                        case 2:{
+                             set<Product*> onlyHousehold = filterProducts(s.getProducts(), isProductHousehold);
+                             printProducts(onlyHousehold);
+                             clearProducts(onlyHousehold);
+                            break;
+                        }
+                        case 3:{
+                             set<Product*> onlyElectrical = filterProducts(s.getProducts(), isProductElectrical);
+                             printProducts(onlyElectrical);
+                             clearProducts(onlyElectrical);
+                            break;
+                        }
+                        case 4:{
+                             set<Product*> onlyElectricalAppliance = filterProducts(s.getProducts(), isProductElectricalAppliance);
+                             printProducts(onlyElectricalAppliance);
+                             clearProducts(onlyElectricalAppliance);
+                            break;
+                        }
+                        default:{
+                            cout<<"\nInvalid option!\n";
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case 5:{
+                    c.add(s);
+                    break;
+                }
+                case 6:{
+                    c.del(s);
+                    break;
+                }
+                case 7:{
+                    double sale = c.buy();
+                    //if the cart is not empty, issue a receipt
+                    if(sale!=-1){
+                        sales.insert(make_pair(cnt++, sale));
+                        //if in the same session, multiple orders are made, initialize an empty cart for the next order
+                        c = Cart();
+                    }
+                    break;
+                }
+                case 8:{
+                 k = 0;
+                 break;
+                }
+            }
+        }
+      }
+      else if (k == 3) k = -1;
+      else {
+        cout<<"\t Invalid choice!";
+        k = -1;
+      }
+  }
+}
+
+/////////////////////////////////////////////////
+
 int main(){
-  Product* p1 = new Food("chips", 200, 3.5, Food::category::snacks, "28.04.2024", 560, 130, 0);
-  Product* p2 = new HouseholdProduct("bleach", 100, 10.5, "chlorine", true);
-  Product* p3 = new ElectricalProduct("TV", 35, 400, 2, 500);
-  Product* p4 = new ElectricalAppliance("Vaccum Cleaner", 50, 200.8, "plastic", false, 1, 300, 100, {"Bluetooth conectivity", "Automatic shut-off"} );
-  vector<Product*> l = {p1,p2,p3,p4};
-  
-  Supermarket s("Clevr", 1987, l);
-  s.welcome();
-  
-  int k;
-  cout<<"1. Admin\n2. Client\n";
-  cin>>k;
-  cout<<endl;
-  if(k == 1){
-    while(k == 1){
-        cout << "1. Add product\n";
-        cout << "2. Show products\n";
-        cout << "3. Edit product\n";
-        cout << "4. Delete product\n";
-        cout << "5. Stop\n\n";
-        int choice;
-        cin >> choice;
-        switch(choice){
-            case 1:{
-                s.addProduct();
-                break;
-            }
-            case 2:{
-                s.showProducts();
-                break;
-            }
-            case 3:{
-                s.editProduct();
-                break;
-            }
-            case 4:{
-                s.delProduct();
-                break;
-            }
-            case 5:{
-                k = 0;
-                break;
-            }
-        }
-    }
-  }
-  else if (k == 2){
-    while(k == 2){
-        Cart c;
-        s.showProducts();
-        cout << "1. Add product to the cart\n";
-        cout << "2. Delete product from the cart\n";
-        cout << "3. Place order\n\n";
-        int choice;
-        cin >> choice;
-        switch(choice){
-            case 1:{
-                c.add(s);
-                break;
-            }
-            case 2:{
-                c.del();
-                break;
-            }
-            case 3:{
-                c.buy();
-                k = 0;
-                break;
-            }
-        }
-    }
-  }
-  else cout<<"\t Invalid user!";
-  delete[] p1,p2,p3,p4;
+
+  App* app = app->getInstance();
+  app->run();
   return 0;
 }
+//class IOInterface;
+//class Supermarket;
+//class Cart;
+//class Product;
+//class HouseholdProduct;
+//class ElectricalProduct;
+//class ElectricalAppliance;
+//class Food;
+//class FileNotFound;
+//class App;
+//to do
+//discount manager template class
+//use list
+
+
+
+
+
+
+
+
+
+
